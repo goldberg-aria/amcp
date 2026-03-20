@@ -198,7 +198,18 @@ Implementations may:
 
 This allows adoption without forcing a full rewrite.
 
-## 8. Compliance expectations
+## 8. Relationship to adjacent agent standards
+
+AMCP is designed to be compatible with adjacent agent standards such as MCP and A2A.
+
+- MCP addresses tool and data access
+- A2A addresses agent-to-agent delegation and coordination
+- AMCP addresses portable memory continuity
+
+This relationship is descriptive, not normative.
+AMCP does not require MCP or A2A, and implementations of those protocols do not automatically imply AMCP support.
+
+## 9. Compliance expectations
 
 A conforming implementation should support:
 
@@ -208,7 +219,7 @@ A conforming implementation should support:
 - delete exclusion behavior
 - auth and policy boundaries
 
-## 9. Reference implementation model
+## 10. Reference implementation model
 
 Current reference position:
 

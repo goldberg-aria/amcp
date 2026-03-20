@@ -32,6 +32,29 @@ It standardizes:
 - a portable HTTP surface
 - export/import behavior
 
+## Relationship to other agent standards
+
+AMCP is designed to complement other agent infrastructure standards, not replace them.
+
+- MCP standardizes how agents connect to tools and data sources
+- A2A standardizes how agents delegate work and communicate with other agents
+- AMCP standardizes how agents preserve portable, long-term memory
+
+In practical terms:
+
+- use MCP for tool access
+- use A2A for agent collaboration
+- use AMCP for memory continuity
+
+This makes it possible to describe a simple agent stack:
+
+- tools through MCP
+- agents through A2A
+- memory through AMCP
+
+AMCP does not depend on MCP or A2A.
+It is intended to work alongside them when they are present.
+
 ## Analogy
 
 AMCP follows a similar model to OAuth:
@@ -56,6 +79,10 @@ The implementation can be self-hosted or managed.
   - machine-readable API draft
 - `docs/adoption-guide.md`
   - how to adopt AMCP through MCP, SDK, or native integration
+- `docs/integration-guide.md`
+  - how AMCP fits alongside MCP and A2A
+- `docs/messaging.md`
+  - safe positioning and marketing language
 
 ## Reference implementations
 
