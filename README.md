@@ -61,7 +61,9 @@ The implementation can be self-hosted or managed.
 
 Current reference implementations:
 
-- Nexus
+- [Nexus AMCP page](https://nexus.nunchiai.com/en/nexus/amcp)
+  - public AMCP reference page
+- [Nexus](https://nexus.nunchiai.com/en/nexus)
   - AMCP reference server implementation
 - `@nunchiai/reference-agent`
   - AMCP reference client implementation
@@ -69,6 +71,10 @@ Current reference implementations:
   - MCP bridge and installation path
 - `@nunchiai/amcp-sdk`
   - SDK for direct integration
+
+Managed reference service:
+
+- [Nexus hosted implementation](https://nexus.nunchiai.com/en/nexus)
 
 ## Quick view
 
