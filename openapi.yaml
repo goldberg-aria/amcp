@@ -1,0 +1,516 @@
+openapi: 3.0.3
+info:
+  title: AMCP
+  version: 0.1.0
+  description: |
+    Agent Memory Continuity Protocol.
+
+    AMCP is a protocol for portable, long-term agent memory.
+servers:
+  - url: https://your-server.example.com
+    description: Example AMCP server
+tags:
+  - name: memories
+  - name: sessions
+  - name: portability
+paths:
+  /v1/amcp/remember:
+    post:
+      tags: [memories]
+      summary: Store memory records
+      operationId: remember
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [items]
+              properties:
+                items:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/RememberItemInput'
+      responses:
+        '200':
+          description: Remember result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RememberResult'
+  /v1/amcp/recall:
+    post:
+      tags: [memories]
+      summary: Recall relevant memory records
+      operationId: recall
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query:
+                  type: string
+                scope:
+                  $ref: '#/components/schemas/MemoryScope'
+                types:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/EventType'
+                limit:
+                  type: integer
+                token_budget:
+                  type: integer
+                depth:
+                  type: string
+                  enum: [shallow, deep]
+                session_id:
+                  type: string
+      responses:
+        '200':
+          description: Recall result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecallResult'
+  /v1/amcp/sessions:
+    get:
+      tags: [sessions]
+      summary: List sessions
+      operationId: listSessions
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+        - in: query
+          name: scope[kind]
+          schema:
+            $ref: '#/components/schemas/ScopeKind'
+        - in: query
+          name: scope[id]
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Session list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SessionSummary'
+  /v1/amcp/sessions/{sessionId}:
+    get:
+      tags: [sessions]
+      summary: Get session detail
+      operationId: getSession
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: sessionId
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: scope[kind]
+          schema:
+            $ref: '#/components/schemas/ScopeKind'
+        - in: query
+          name: scope[id]
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Session detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionDetail'
+  /v1/amcp/export:
+    post:
+      tags: [portability]
+      summary: Export memories
+      operationId: exportMemories
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                scope:
+                  $ref: '#/components/schemas/MemoryScope'
+                types:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/EventType'
+                format:
+                  type: string
+                  enum: [json, jsonl]
+      responses:
+        '200':
+          description: Export result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportResult'
+            text/plain:
+              schema:
+                type: string
+  /v1/amcp/import:
+    post:
+      tags: [portability]
+      summary: Import memories
+      operationId: importMemories
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                items:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/RememberItemInput'
+                data:
+                  type: string
+                format:
+                  type: string
+                  enum: [json, jsonl]
+                preserve_ids:
+                  type: boolean
+                preserve_timestamps:
+                  type: boolean
+                preserve_origin:
+                  type: boolean
+                dedupe:
+                  oneOf:
+                    - type: boolean
+                    - type: string
+                      enum: [id, content_hash]
+      responses:
+        '200':
+          description: Import result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportResult'
+  /v1/amcp/memories/{memoryId}:
+    delete:
+      tags: [memories]
+      summary: Soft-delete a memory record
+      operationId: deleteMemory
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: memoryId
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: scope[kind]
+          schema:
+            $ref: '#/components/schemas/ScopeKind'
+        - in: query
+          name: scope[id]
+          schema:
+            type: string
+        - in: query
+          name: deletion_source
+          schema:
+            $ref: '#/components/schemas/DeletionSource'
+      responses:
+        '200':
+          description: Delete result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteResult'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: APIKey
+  schemas:
+    EventType:
+      type: string
+      enum: [decision, task, context, artifact, error, convention]
+    ScopeKind:
+      type: string
+      enum: [user, project, team, org]
+    Visibility:
+      type: string
+      enum: [private, project, team, org]
+    RetentionMode:
+      type: string
+      enum: [ephemeral, persistent, ttl]
+    DeletionSource:
+      type: string
+      enum: [user, agent, policy, import]
+    MemoryScope:
+      type: object
+      required: [kind, id]
+      properties:
+        kind:
+          $ref: '#/components/schemas/ScopeKind'
+        id:
+          type: string
+    MemoryOrigin:
+      type: object
+      properties:
+        agent_id:
+          type: string
+        app_id:
+          type: string
+        user_id:
+          type: string
+        session_id:
+          type: string
+        event_type:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+    MemoryRetention:
+      type: object
+      required: [mode]
+      properties:
+        mode:
+          $ref: '#/components/schemas/RetentionMode'
+        until:
+          type: string
+          format: date-time
+    SourceRef:
+      type: object
+      required: [kind, uri]
+      properties:
+        kind:
+          type: string
+        uri:
+          type: string
+      additionalProperties: true
+    RememberItemInput:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: string
+        type:
+          $ref: '#/components/schemas/EventType'
+        scope:
+          $ref: '#/components/schemas/MemoryScope'
+        origin:
+          type: object
+          properties:
+            agent_id:
+              type: string
+            app_id:
+              type: string
+            user_id:
+              type: string
+        visibility:
+          $ref: '#/components/schemas/Visibility'
+        retention:
+          $ref: '#/components/schemas/MemoryRetention'
+        tags:
+          type: array
+          items:
+            type: string
+        metadata:
+          type: object
+          additionalProperties: true
+        source_refs:
+          type: array
+          items:
+            $ref: '#/components/schemas/SourceRef'
+        session_id:
+          type: string
+        parent_event_id:
+          type: string
+    MemoryItem:
+      type: object
+      required:
+        - id
+        - content
+        - type
+        - energy
+        - scope
+        - origin
+        - visibility
+        - retention
+        - tags
+        - metadata
+        - source_refs
+      properties:
+        id:
+          type: string
+        content:
+          type: string
+        type:
+          type: string
+        energy:
+          type: number
+        scope:
+          $ref: '#/components/schemas/MemoryScope'
+        origin:
+          $ref: '#/components/schemas/MemoryOrigin'
+        visibility:
+          type: string
+        retention:
+          $ref: '#/components/schemas/MemoryRetention'
+        tags:
+          type: array
+          items:
+            type: string
+        metadata:
+          type: object
+          additionalProperties: true
+        source_refs:
+          type: array
+          items:
+            $ref: '#/components/schemas/SourceRef'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    RememberResult:
+      type: object
+      required: [items, session_id]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            required: [id]
+            properties:
+              id:
+                type: string
+        session_id:
+          type: string
+    RecallOverflow:
+      type: object
+      properties:
+        remaining:
+          type: integer
+        remaining_atoms:
+          type: integer
+    RecallResult:
+      type: object
+      required: [items, tokens_used]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MemoryItem'
+        graph_context:
+          type: string
+          nullable: true
+        tokens_used:
+          type: integer
+        overflow:
+          allOf:
+            - $ref: '#/components/schemas/RecallOverflow'
+          nullable: true
+    SessionSummary:
+      type: object
+      required: [id, status, last_activity, atom_count]
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+          enum: [active, paused, closed]
+        summary:
+          type: string
+        key_decisions:
+          type: array
+          items:
+            type: string
+        last_activity:
+          type: string
+          format: date-time
+        atom_count:
+          type: integer
+    SessionDetail:
+      type: object
+      required: [item, chain]
+      properties:
+        item:
+          $ref: '#/components/schemas/SessionSummary'
+        chain:
+          type: array
+          items:
+            $ref: '#/components/schemas/MemoryItem'
+    ExportResult:
+      type: object
+      required: [format, items]
+      properties:
+        format:
+          type: string
+          enum: [json]
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MemoryItem'
+    ImportResultItem:
+      type: object
+      required: [status]
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+          enum: [imported, skipped]
+        type:
+          type: string
+        scope:
+          $ref: '#/components/schemas/MemoryScope'
+    ImportResult:
+      type: object
+      required: [imported_count, skipped_count, items]
+      properties:
+        imported_count:
+          type: integer
+        skipped_count:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ImportResultItem'
+    DeleteResult:
+      type: object
+      required: [id, status, deleted_at]
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+          enum: [deleted]
+        deleted_at:
+          type: string
+          format: date-time
+        deletion_source:
+          $ref: '#/components/schemas/DeletionSource'
