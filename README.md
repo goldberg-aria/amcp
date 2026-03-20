@@ -1,6 +1,4 @@
-# AMCP
-
-Agent Memory Continuity Protocol
+# AMCP: Agent Memory Continuity Protocol
 
 AMCP is a protocol proposal for portable, long-term agent memory.
 
