@@ -11,3 +11,4 @@ Current examples:
 - `curl.md`
 - `sdk.md`
 - `compliance.md`
+- `harness-provider.md`

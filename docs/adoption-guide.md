@@ -80,6 +80,9 @@ Tradeoff:
 
 - requires code changes in the runtime
 
+For independent harnesses that already have local memory, use a provider boundary instead of rewriting the runtime first.
+See `amcp/examples/harness-provider.md` for the `harness-local -> nexus-local -> nexus-cloud` pattern.
+
 ## 3. Level 2: Native integration
 
 Best for:
