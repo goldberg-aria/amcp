@@ -1,11 +1,12 @@
 openapi: 3.0.3
 info:
   title: AMCP
-  version: 0.1.0
+  version: 0.2.0
   description: |
     Agent Memory Continuity Protocol.
 
     AMCP is a protocol for portable, long-term agent memory.
+    Current Axon Level 0 bootstrap transport is unauthenticated; auth is deferred to a later phase.
 servers:
   - url: https://your-server.example.com
     description: Example AMCP server
@@ -13,14 +14,49 @@ tags:
   - name: memories
   - name: sessions
   - name: portability
+  - name: extensions
 paths:
+  /healthz:
+    get:
+      tags: [extensions]
+      summary: Health check
+      operationId: healthz
+      responses:
+        '200':
+          description: Service health
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '405':
+          description: Method not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/amcp/capabilities:
+    get:
+      tags: [extensions]
+      summary: Get backend and protocol capabilities
+      operationId: getCapabilities
+      responses:
+        '200':
+          description: Capability advertisement
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CapabilitiesResult'
+        '405':
+          description: Method not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/amcp/remember:
     post:
       tags: [memories]
       summary: Store memory records
       operationId: remember
-      security:
-        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -31,6 +67,7 @@ paths:
               properties:
                 items:
                   type: array
+                  minItems: 1
                   items:
                     $ref: '#/components/schemas/RememberItemInput'
       responses:
@@ -40,13 +77,35 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RememberResult'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Backend mode is configured but not implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/amcp/recall:
     post:
       tags: [memories]
       summary: Recall relevant memory records
       operationId: recall
-      security:
-        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -57,6 +116,7 @@ paths:
               properties:
                 query:
                   type: string
+                  description: Required. Use `""` to request latest-first recall without lexical matching.
                 scope:
                   $ref: '#/components/schemas/MemoryScope'
                 types:
@@ -67,6 +127,8 @@ paths:
                   type: integer
                 token_budget:
                   type: integer
+                context_budget:
+                  $ref: '#/components/schemas/ContextBudget'
                 depth:
                   type: string
                   enum: [shallow, deep]
@@ -79,13 +141,84 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RecallResult'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Backend mode is configured but not implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/amcp/ingest:
+    post:
+      tags: [extensions]
+      summary: Ingest a source into a canonical memory item
+      operationId: ingestMemory
+      description: Available only when `capabilities.extensions` includes `ingest`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IngestRequest'
+      responses:
+        '200':
+          description: Remember-style result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RememberResult'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Extension not available
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Backend mode is configured but not implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/amcp/sessions:
     get:
       tags: [sessions]
       summary: List sessions
       operationId: listSessions
-      security:
-        - bearerAuth: []
       parameters:
         - in: query
           name: limit
@@ -105,20 +238,30 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                required: [items]
-                properties:
-                  items:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/SessionSummary'
+                $ref: '#/components/schemas/SessionListResult'
+        '405':
+          description: Method not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Backend mode is configured but not implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/amcp/sessions/{sessionId}:
     get:
       tags: [sessions]
       summary: Get session detail
       operationId: getSession
-      security:
-        - bearerAuth: []
       parameters:
         - in: path
           name: sessionId
@@ -140,13 +283,35 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SessionDetail'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Backend mode is configured but not implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/amcp/export:
     post:
       tags: [portability]
       summary: Export memories
       operationId: exportMemories
-      security:
-        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -173,40 +338,41 @@ paths:
             text/plain:
               schema:
                 type: string
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Backend mode is configured but not implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/amcp/import:
     post:
       tags: [portability]
       summary: Import memories
       operationId: importMemories
-      security:
-        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                items:
-                  type: array
-                  items:
-                    $ref: '#/components/schemas/RememberItemInput'
-                data:
-                  type: string
-                format:
-                  type: string
-                  enum: [json, jsonl]
-                preserve_ids:
-                  type: boolean
-                preserve_timestamps:
-                  type: boolean
-                preserve_origin:
-                  type: boolean
-                dedupe:
-                  oneOf:
-                    - type: boolean
-                    - type: string
-                      enum: [id, content_hash]
+              $ref: '#/components/schemas/ImportRequest'
       responses:
         '200':
           description: Import result
@@ -214,13 +380,119 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ImportResult'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Backend mode is configured but not implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/amcp/forget:
+    post:
+      tags: [memories]
+      summary: Soft-delete memory records
+      operationId: forgetMemories
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForgetRequest'
+      responses:
+        '200':
+          description: Soft-delete result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteManyResult'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Backend mode is configured but not implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/amcp/erase:
+    post:
+      tags: [memories]
+      summary: Permanently erase memory records
+      operationId: eraseMemories
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EraseRequest'
+      responses:
+        '200':
+          description: Hard-delete result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EraseResult'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Backend mode is configured but not implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/amcp/memories/{memoryId}:
     delete:
       tags: [memories]
       summary: Soft-delete a memory record
       operationId: deleteMemory
-      security:
-        - bearerAuth: []
       parameters:
         - in: path
           name: memoryId
@@ -246,24 +518,141 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DeleteResult'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Backend mode is configured but not implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 components:
-  securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: APIKey
   schemas:
+    HealthResponse:
+      type: object
+      required: [status, service, backend, timestamp]
+      properties:
+        status:
+          type: string
+        service:
+          type: string
+        backend:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+    CapabilitiesResult:
+      type: object
+      required:
+        - protocol_version
+        - conformance_level
+        - lifecycle_profiles
+        - security_profile
+        - operations
+        - extensions
+        - backend_modes
+        - supports_budget_recall
+        - supports_compaction_checkpoints
+        - supports_provenance
+        - max_item_size
+        - retention_policies
+      properties:
+        protocol_version:
+          type: string
+        conformance_level:
+          type: string
+          enum: [L0, L1, L2]
+          description: |
+            Declared protocol conformance level per SPEC §9.1.
+        lifecycle_profiles:
+          type: array
+          items:
+            type: string
+          description: |
+            Declared lifecycle profiles per SPEC §6.6.
+            Standard values: lifecycle.soft, lifecycle.batch, lifecycle.hard, lifecycle.cryptographic.
+            Vendor profiles use lifecycle.x-<vendor>-<name>.
+          example: ["lifecycle.soft", "lifecycle.batch"]
+        security_profile:
+          type: string
+          description: |
+            Declared security profile per SPEC §13.
+            Standard values: security.bearer, security.oauth2, security.mtls,
+            security.none-loopback, security.axon-bootstrap.
+            Vendor profiles use security.x-<vendor>-<name>.
+          example: "security.bearer"
+        operations:
+          type: array
+          items:
+            type: string
+        extensions:
+          type: array
+          items:
+            type: string
+        backend_modes:
+          type: array
+          items:
+            type: string
+        supports_budget_recall:
+          type: boolean
+        supports_compaction_checkpoints:
+          type: boolean
+        supports_provenance:
+          type: boolean
+        max_item_size:
+          type: integer
+        retention_policies:
+          type: array
+          items:
+            type: string
     EventType:
       type: string
       enum: [decision, task, context, artifact, error, convention]
     ScopeKind:
       type: string
+      description: Canonical scope kinds. Implementations may accept additional aliases and normalize them internally.
       enum: [user, project, team, org]
     Visibility:
       type: string
+      description: Canonical visibility values. Input aliases such as `personal` and `user` may be accepted and normalized to `private`.
       enum: [private, project, team, org]
     RetentionMode:
       type: string
+      description: Canonical retention modes. Implementations may accept additional aliases and normalize them internally.
       enum: [ephemeral, persistent, ttl]
     DeletionSource:
       type: string
@@ -287,20 +676,30 @@ components:
           type: string
         session_id:
           type: string
-        event_type:
-          type: string
         timestamp:
           type: string
           format: date-time
     MemoryRetention:
       type: object
       required: [mode]
+      description: When `mode` is `ttl`, `until` should be provided as an RFC3339 timestamp.
       properties:
         mode:
           $ref: '#/components/schemas/RetentionMode'
         until:
           type: string
           format: date-time
+    ContextBudget:
+      type: object
+      properties:
+        max_tokens:
+          type: integer
+        priority:
+          type: string
+        active_files:
+          type: array
+          items:
+            type: string
     SourceRef:
       type: object
       required: [kind, uri]
@@ -310,25 +709,53 @@ components:
         uri:
           type: string
       additionalProperties: true
-    RememberItemInput:
+    ImportRequestBase:
       type: object
-      required: [content]
       properties:
-        content:
+        format:
+          type: string
+          enum: [json, jsonl]
+        preserve_ids:
+          type: boolean
+        preserve_timestamps:
+          type: boolean
+        preserve_origin:
+          type: boolean
+        dedupe:
+          oneOf:
+            - type: boolean
+            - type: string
+              enum: [id, content_hash]
+    ImportRequest:
+      oneOf:
+        - allOf:
+            - $ref: '#/components/schemas/ImportRequestBase'
+            - type: object
+              required: [items]
+              properties:
+                items:
+                  type: array
+                  minItems: 1
+                  items:
+                    $ref: '#/components/schemas/RememberItemInput'
+        - allOf:
+            - $ref: '#/components/schemas/ImportRequestBase'
+            - type: object
+              required: [data]
+              properties:
+                data:
+                  type: string
+    IngestHints:
+      type: object
+      properties:
+        id:
           type: string
         type:
           $ref: '#/components/schemas/EventType'
         scope:
           $ref: '#/components/schemas/MemoryScope'
         origin:
-          type: object
-          properties:
-            agent_id:
-              type: string
-            app_id:
-              type: string
-            user_id:
-              type: string
+          $ref: '#/components/schemas/MemoryOrigin'
         visibility:
           $ref: '#/components/schemas/Visibility'
         retention:
@@ -344,10 +771,66 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SourceRef'
+        energy:
+          type: number
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    IngestRequest:
+      type: object
+      required: [source]
+      properties:
+        source:
+          type: string
+        hints:
+          $ref: '#/components/schemas/IngestHints'
+    RememberItemInput:
+      type: object
+      required: [content, type, scope, visibility, retention]
+      properties:
+        id:
+          type: string
+        content:
+          type: string
+        type:
+          $ref: '#/components/schemas/EventType'
+        scope:
+          $ref: '#/components/schemas/MemoryScope'
+        origin:
+          $ref: '#/components/schemas/MemoryOrigin'
+        visibility:
+          $ref: '#/components/schemas/Visibility'
+        retention:
+          $ref: '#/components/schemas/MemoryRetention'
+        tags:
+          type: array
+          items:
+            type: string
+        metadata:
+          type: object
+          additionalProperties: true
+          description: |
+            Free-form metadata. Vendor-specific extensions MUST use the
+            `x-` or `x-<vendor>-` key prefix as defined in SPEC §11.1.
+            Conforming clients MUST ignore unknown `x-*` keys without error.
+        source_refs:
+          type: array
+          items:
+            $ref: '#/components/schemas/SourceRef'
+        energy:
+          type: number
         session_id:
+          description: Compatibility alias for `origin.session_id`. Servers may normalize this into `origin.session_id` before storage.
           type: string
-        parent_event_id:
+        created_at:
           type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
     MemoryItem:
       type: object
       required:
@@ -386,6 +869,10 @@ components:
         metadata:
           type: object
           additionalProperties: true
+          description: |
+            Free-form metadata. Vendor-specific extensions MUST use the
+            `x-` or `x-<vendor>-` key prefix as defined in SPEC §11.1.
+            Conforming clients MUST ignore unknown `x-*` keys without error.
         source_refs:
           type: array
           items:
@@ -398,7 +885,7 @@ components:
           format: date-time
     RememberResult:
       type: object
-      required: [items, session_id]
+      required: [items]
       properties:
         items:
           type: array
@@ -410,6 +897,7 @@ components:
                 type: string
         session_id:
           type: string
+          nullable: true
     RecallOverflow:
       type: object
       properties:
@@ -454,6 +942,14 @@ components:
           format: date-time
         atom_count:
           type: integer
+    SessionListResult:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SessionSummary'
     SessionDetail:
       type: object
       required: [item, chain]
@@ -500,6 +996,19 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ImportResultItem'
+    ForgetRequest:
+      type: object
+      required: [ids]
+      properties:
+        ids:
+          type: array
+          minItems: 1
+          items:
+            type: string
+        deletion_source:
+          $ref: '#/components/schemas/DeletionSource'
+        scope:
+          $ref: '#/components/schemas/MemoryScope'
     DeleteResult:
       type: object
       required: [id, status, deleted_at]
@@ -514,3 +1023,32 @@ components:
           format: date-time
         deletion_source:
           $ref: '#/components/schemas/DeletionSource'
+    DeleteManyResult:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/DeleteResult'
+    EraseRequest:
+      type: object
+      required: [ids]
+      properties:
+        ids:
+          type: array
+          minItems: 1
+          items:
+            type: string
+        scope:
+          $ref: '#/components/schemas/MemoryScope'
+    EraseResult:
+      type: object
+      required: [erased_count]
+      properties:
+        erased_count:
+          type: integer
+        ids:
+          type: array
+          items:
+            type: string
