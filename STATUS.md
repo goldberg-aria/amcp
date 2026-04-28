@@ -15,6 +15,11 @@ Current working baseline:
 - MCP bridge
 - reference client
 - compliance runs
+- forget (batch soft delete)
+- capabilities endpoint
+- conformance level declaration
+- lifecycle profile declaration
+- security profile declaration
 
 ## 2. Implemented route surface
 
@@ -25,10 +30,16 @@ Current working baseline:
 - `POST /v1/amcp/export`
 - `POST /v1/amcp/import`
 - `DELETE /v1/amcp/memories/:id`
+- `POST /v1/amcp/forget`
+- `GET /v1/amcp/capabilities`
 
 ## 3. Implemented policy baseline
 
-Current auth scopes:
+### Current security profile
+
+- `security.axon-bootstrap` (Axon L0 reference; auth deferred per `openapi.yaml` info)
+
+### Auth scopes (active when a non-bootstrap security profile is configured)
 
 - `memory.read`
 - `memory.write`
@@ -36,9 +47,11 @@ Current auth scopes:
 - `memory.delete`
 - `memory.admin`
 
-Current delete behavior:
+### Lifecycle profiles declared
 
-- soft delete only
+- `lifecycle.soft` (baseline)
+- `lifecycle.batch` (via `POST /v1/amcp/forget`)
+- `lifecycle.hard` (via `POST /v1/amcp/erase`)
 
 ## 4. Portability baseline
 
@@ -75,13 +88,14 @@ Canonical public protocol surface:
 
 ## 7. What is not finalized yet
 
-Not part of the v0.1 baseline:
+Not part of the v0.2 baseline:
 
-- hard delete / purge
+- canonical erase route (currently profile-dependent at /v1/amcp/erase, not yet mandated by SPEC)
 - expanded privacy model
 - broader multi-language SDK support
 - final governance process
 - ecosystem badge / registry process
+- atom relations / graph model (deferred to v0.3)
 
 ## 8. Practical status
 
