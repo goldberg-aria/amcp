@@ -1,121 +1,101 @@
 # AMCP: Agent Memory Continuity Protocol
 
-AMCP is a protocol proposal for portable, long-term agent memory.
+Status: Public Draft v0.2
 
-Its purpose is to make memory durable across:
+AMCP is a protocol for portable, long-term agent memory.
 
-- sessions
-- tools
-- runtimes
-- clients
-- implementations
+It defines the small shared contract an agent runtime needs to save, recall, move, and govern memory across sessions, clients, tools, and implementations.
 
-AMCP does not define a model protocol, prompt format, or reasoning standard.
-It defines a minimal memory contract so agent memory can be saved, recalled, moved, and governed consistently.
+AMCP does not define a model protocol, prompt format, tool protocol, or reasoning standard. It focuses only on memory continuity.
 
-## Why AMCP exists
+## Why AMCP Exists
 
-Today, most agents lose context when:
+Most agents still lose useful memory when:
 
-- a session ends
+- a chat session ends
 - a different client takes over
 - a runtime changes
-- memory lives inside a single product
+- memory is trapped inside one product
+- a team needs to move memory between self-hosted and managed systems
 
-AMCP exists to solve that continuity problem.
+AMCP solves the interoperability layer: the canonical record shape, the HTTP operations, the export/import behavior, and the rules for extending the protocol without forking it.
 
-It standardizes:
+## Core Idea
 
-- a canonical memory record shape
-- scope and provenance fields
-- retention and delete semantics
-- a portable HTTP surface
-- export/import behavior
+AMCP keeps the core small and makes everything else explicit.
 
-## Relationship to other agent standards
+The core standardizes:
 
-AMCP is designed to complement other agent infrastructure standards, not replace them.
+- a canonical memory record
+- `remember` and `recall`
+- sessions
+- export/import portability
+- soft deletion
+- capability discovery
 
-- MCP standardizes how agents connect to tools and data sources
-- A2A standardizes how agents delegate work and communicate with other agents
-- AMCP standardizes how agents preserve portable, long-term memory
+Implementations can then declare additional behavior through:
 
-In practical terms:
+- conformance levels: `L0`, `L1`, `L2`
+- lifecycle profiles: `lifecycle.soft`, `lifecycle.batch`, `lifecycle.hard`, `lifecycle.cryptographic`
+- security profiles: `security.bearer`, `security.oauth2`, `security.mtls`, `security.none-loopback`, `security.axon-bootstrap`
+- vendor extensions using `x-*` names
 
-- use MCP for tool access
-- use A2A for agent collaboration
-- use AMCP for memory continuity
+This lets AMCP support both minimal local runtimes and managed production services without bloating the canonical record.
 
-This makes it possible to describe a simple agent stack:
+## Canonical Memory Record
 
-- tools through MCP
-- agents through A2A
-- memory through AMCP
+A memory record contains:
 
-AMCP does not depend on MCP or A2A.
-It is intended to work alongside them when they are present.
+- `id`
+- `content`
+- `type`
+- `scope`
+- `origin`
+- `visibility`
+- `retention`
+- `tags`
+- `metadata`
+- `source_refs`
+- `energy`
+- `created_at`
+- `updated_at`
 
-## Analogy
+Standard record types:
 
-AMCP follows a similar model to OAuth:
+- `task`
+- `decision`
+- `context`
+- `artifact`
+- `convention`
+- `error`
 
-- OAuth standardizes authorization
-- Auth0 provides a managed OAuth service
-- AMCP standardizes agent memory
-- Nexus provides a managed AMCP service
+Example:
 
-The protocol is open.
-The implementation can be self-hosted or managed.
+```json
+{
+  "id": "mem_abc123",
+  "content": "User prefers TypeScript for new projects",
+  "type": "convention",
+  "scope": { "kind": "user", "id": "user_xyz" },
+  "origin": {
+    "user_id": "user_xyz",
+    "agent_id": "agent_001",
+    "session_id": "sess_456"
+  },
+  "visibility": "private",
+  "retention": { "mode": "persistent" },
+  "tags": ["preference", "language"],
+  "metadata": {},
+  "source_refs": [],
+  "energy": 0.95,
+  "created_at": "2026-03-20T10:00:00Z",
+  "updated_at": "2026-03-20T10:00:00Z"
+}
+```
 
-## What this repository contains
+## HTTP Surface
 
-- `SPEC.md`
-  - the protocol draft
-- `STATUS.md`
-  - what is implemented today versus still proposed
-- `IMPLEMENTATIONS.md`
-  - reference and known implementations
-- `openapi.yaml`
-  - machine-readable API draft
-- `docs/adoption-guide.md`
-  - how to adopt AMCP through MCP, SDK, or native integration
-- `docs/integration-guide.md`
-  - how AMCP fits alongside MCP and A2A
-- `docs/messaging.md`
-  - safe positioning and marketing language
-
-## Reference implementations
-
-Current reference implementations:
-
-- [Nexus AMCP page](https://nexus.nunchiai.com/en/nexus/amcp)
-  - public AMCP reference page
-- [Nexus](https://nexus.nunchiai.com/en/nexus)
-  - AMCP reference server implementation
-- `@nunchiai/reference-agent`
-  - AMCP reference client implementation
-- `@nunchiai/nexus-mcp`
-  - MCP bridge and installation path
-- `@nunchiai/amcp-sdk`
-  - SDK for direct integration
-
-Managed reference service:
-
-- [Nexus hosted implementation](https://nexus.nunchiai.com/en/nexus)
-
-## Quick view
-
-Canonical operations in AMCP v0.1:
-
-- `remember`
-- `recall`
-- `sessions`
-- `session`
-- `export`
-- `import`
-- `delete`
-
-Canonical route surface:
+Canonical AMCP routes:
 
 - `POST /v1/amcp/remember`
 - `POST /v1/amcp/recall`
@@ -124,25 +104,128 @@ Canonical route surface:
 - `POST /v1/amcp/export`
 - `POST /v1/amcp/import`
 - `DELETE /v1/amcp/memories/:id`
+- `POST /v1/amcp/forget`
+- `GET /v1/amcp/capabilities`
 
-## Adoption path
+Profile-dependent routes:
 
-AMCP is intended to be adopted in stages:
+- `POST /v1/amcp/erase` when `lifecycle.hard` is declared
 
-1. MCP bridge
-2. SDK integration
-3. Native runtime integration
+Optional extension routes:
 
-See `docs/adoption-guide.md`.
+- `POST /v1/amcp/ingest` as an example source-to-memory extension
 
-## Current position
+Operational routes:
 
-AMCP is currently a public draft with working reference implementations.
+- `GET /healthz`
 
-The goal is not to replace all existing memory systems at once.
-The goal is to define a stable interoperability layer that real systems can implement and verify.
+## Capabilities
+
+Servers expose their runtime contract through:
+
+```http
+GET /v1/amcp/capabilities
+```
+
+The descriptor declares:
+
+- protocol version
+- conformance level
+- lifecycle profiles
+- security profile
+- supported operations
+- extensions
+- backend modes and feature flags
+
+Clients can use this endpoint to adapt behavior while still operating against the canonical AMCP surface.
+
+## Conformance
+
+AMCP conformance has three independent dimensions.
+
+### Protocol Levels
+
+- `L0` Core: canonical record shape, remember, recall, delete, `lifecycle.soft`, declared security profile
+- `L1` Portable: L0 plus export/import, `json` and `jsonl`, preservation flags, dedupe
+- `L2` Discoverable: L1 plus `/v1/amcp/capabilities`, declared extensions, lifecycle profiles, and security profile
+
+### Lifecycle Profiles
+
+- `lifecycle.soft`: mark deleted, retain record, exclude from normal recall
+- `lifecycle.batch`: batch soft delete through `POST /v1/amcp/forget`
+- `lifecycle.hard`: remove from primary storage, commonly through `POST /v1/amcp/erase`
+- `lifecycle.cryptographic`: make content unrecoverable through key destruction or equivalent
+
+### Security Profiles
+
+- `security.bearer`
+- `security.oauth2`
+- `security.mtls`
+- `security.none-loopback`
+- `security.axon-bootstrap`
+
+Security is transport-agnostic. Managed cloud, loopback, IPC, bootstrap, and self-hosted deployments can declare the profile they actually use.
+
+## Extensions
+
+AMCP uses vendor-prefixed extension names to prevent collisions.
+
+Examples:
+
+- `x-norfolk-provenance-tier`
+- `lifecycle.x-vendor-custom-retention`
+- `security.x-vendor-device-pairing`
+
+Conforming clients must ignore unknown `x-*` keys without error. Canonical fields must not be redefined by extensions.
+
+## Relationship To MCP And A2A
+
+AMCP is designed to complement adjacent agent standards.
+
+- MCP standardizes tool and data access
+- A2A standardizes agent-to-agent delegation and coordination
+- AMCP standardizes portable memory continuity
+
+AMCP does not require MCP or A2A, and support for those protocols does not imply AMCP support.
+
+## Repository Contents
+
+- `SPEC.md`: protocol draft
+- `STATUS.md`: implemented baseline and open items
+- `IMPLEMENTATIONS.md`: reference and known implementations
+- `openapi.yaml`: machine-readable API draft
+- `docs/adoption-guide.md`: adoption paths
+- `docs/integration-guide.md`: relationship to MCP and A2A
+- `docs/messaging.md`: positioning language
+- `examples/`: curl, SDK, compliance, and provider examples
+
+## Reference Implementations
+
+Current reference implementations:
+
+- [Nexus AMCP page](https://nexus.nunchiai.com/en/nexus/amcp)
+- [Nexus](https://nexus.nunchiai.com/en/nexus)
+- `@nunchiai/amcp-sdk`
+- `@nunchiai/nexus-mcp`
+- `@nunchiai/reference-agent`
+
+The protocol is meant to be proven by running systems, not by prose alone.
+
+## Current Status
+
+AMCP is a public draft with working reference implementations.
+
+It should currently be read as:
+
+- usable
+- testable
+- reference-backed
+- still evolving
+
+It is not yet a frozen long-term standard. See `STATUS.md` for the current implemented baseline and open items.
 
 ## License
 
-AMCP specification: Apache 2.0  
-Reference implementations: see individual packages and repositories
+AMCP specification: Apache 2.0
+
+Reference implementations: see individual package and repository licenses.
