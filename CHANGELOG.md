@@ -1,5 +1,27 @@
 # Changelog
 
+## v0.3.0 — 2026-05-03
+
+Status: Public Draft
+
+AMCP v0.3 expands the protocol from portable agent memory into portable experience memory while keeping learning, reasoning, robotics control, and world models outside the protocol.
+
+### Added
+
+- Optional `time` object for timestamp, sequence id, event order, and duration.
+- Optional `experience` object for action, context, outcome, and reason.
+- Explainable recall item shape with `memory`, `score`, `match_basis`, `confidence`, and `age_ms`.
+- Immutability principle for original experience records.
+- Separation of memory records from learning, summaries, embeddings, rankings, and world models.
+- Optional `amcp.embodied.v0` extension profile for physical robots, automation systems, and edge devices.
+- Dotted extension type convention such as `agent.verification`, `embodied.observation`, and `embodied.constraint`.
+
+### Clarified
+
+- Engram is the first reference runtime implementation target.
+- Nexus / Agent Memory is the reference AMCP-compatible backend.
+- Large sensor payloads should be represented through `source_refs`, not embedded in memory records.
+
 ## v0.2.0 — 2026-04-28
 
 Status: Public Draft

@@ -4,12 +4,19 @@ This file tracks AMCP implementations by role.
 
 ## Reference implementations
 
+### Runtime
+
+- Engram
+  - role: first reference runtime implementation target
+  - status: planned for AMCP v0.3
+  - notes: should prove time/sequence, experience records, explainable recall, and `amcp.embodied.v0` compatibility without making AMCP a learning or world-model protocol
+
 ### Server
 
-- Nexus
-  - role: reference server
+- Nexus / Agent Memory
+  - role: reference backend implementation
   - status: working
-  - notes: canonical public surface exposed at `/v1/amcp/*`
+  - notes: canonical public surface exposed at `/v1/amcp/*`; v0.3 semantic fields pending implementation
 
 ### Client
 

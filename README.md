@@ -1,6 +1,6 @@
 # AMCP: Agent Memory Continuity Protocol
 
-Status: Public Draft v0.2
+Status: Public Draft v0.3
 
 AMCP is a protocol for portable, long-term agent memory.
 
@@ -38,9 +38,28 @@ Implementations can then declare additional behavior through:
 - conformance levels: `L0`, `L1`, `L2`
 - lifecycle profiles: `lifecycle.soft`, `lifecycle.batch`, `lifecycle.hard`, `lifecycle.cryptographic`
 - security profiles: `security.bearer`, `security.oauth2`, `security.mtls`, `security.none-loopback`, `security.axon-bootstrap`
+- standard extension profiles such as `amcp.embodied.v0`
 - vendor extensions using `x-*` names
 
 This lets AMCP support both minimal local runtimes and managed production services without bloating the canonical record.
+
+## v0.3 Direction
+
+AMCP v0.3 expands the draft from portable agent memory into portable experience memory.
+
+The reason is practical: agents, robots, automation systems, and local workers are beginning to keep memory in separate products and runtimes. If those systems only define memory after each implementation hardens, interoperability will arrive too late.
+
+v0.3 therefore adds:
+
+- time and sequence fields
+- action-outcome structure
+- explainable recall results
+- immutability of original experience records
+- explicit separation between memory and learning
+- optional embodied memory support through `amcp.embodied.v0`
+
+AMCP still does not define reasoning, planning, robotics control, or a world model.
+It defines the memory records those systems can exchange.
 
 ## Canonical Memory Record
 
@@ -57,6 +76,8 @@ A memory record contains:
 - `metadata`
 - `source_refs`
 - `energy`
+- `time`
+- `experience`
 - `created_at`
 - `updated_at`
 
@@ -88,10 +109,35 @@ Example:
   "metadata": {},
   "source_refs": [],
   "energy": 0.95,
+  "time": {
+    "timestamp": "2026-03-20T10:00:00Z",
+    "sequence_id": "seq_001",
+    "event_order": 12
+  },
+  "experience": {
+    "action": "configured project defaults",
+    "context": "new TypeScript project",
+    "outcome": "future scaffolds should default to TypeScript",
+    "reason": "user preference was explicitly stated"
+  },
   "created_at": "2026-03-20T10:00:00Z",
   "updated_at": "2026-03-20T10:00:00Z"
 }
 ```
+
+## Recall Results
+
+v0.3 recall results should explain why each memory was returned.
+
+Each result can include:
+
+- `memory`
+- `score`
+- `match_basis`
+- `confidence`
+- `age_ms`
+
+This makes recall auditable for coding agents, team memory, and embodied systems where a wrong memory can trigger a wrong action.
 
 ## HTTP Surface
 
@@ -172,11 +218,16 @@ AMCP uses vendor-prefixed extension names to prevent collisions.
 
 Examples:
 
+- `amcp.embodied.v0`
+- `agent.verification`
+- `embodied.observation`
 - `x-norfolk-provenance-tier`
 - `lifecycle.x-vendor-custom-retention`
 - `security.x-vendor-device-pairing`
 
 Conforming clients must ignore unknown `x-*` keys without error. Canonical fields must not be redefined by extensions.
+
+The `amcp.embodied.v0` profile is optional. It gives physical robots, automation systems, and edge devices a standard place for location, sensor event references, routines, constraints, actor state, and environment state without forcing those fields into every AMCP implementation.
 
 ## Relationship To MCP And A2A
 
@@ -203,8 +254,8 @@ AMCP does not require MCP or A2A, and support for those protocols does not imply
 
 Current reference implementations:
 
-- [Nexus AMCP page](https://nexus.nunchiai.com/en/nexus/amcp)
-- [Nexus](https://nexus.nunchiai.com/en/nexus)
+- Engram as the first reference runtime implementation
+- Nexus / Agent Memory as the reference backend implementation
 - `@nunchiai/amcp-sdk`
 - `@nunchiai/nexus-mcp`
 - `@nunchiai/reference-agent`

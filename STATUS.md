@@ -1,10 +1,10 @@
 # AMCP Status
 
-Status: Public Draft with working reference implementations
+Status: Public Draft v0.3 with v0.2 working reference baseline
 
 ## 1. What is implemented today
 
-Current working baseline:
+Current working baseline remains the v0.2 protocol/profile surface:
 
 - canonical AMCP route surface
 - AMCP-shaped request and response mapping
@@ -20,6 +20,8 @@ Current working baseline:
 - conformance level declaration
 - lifecycle profile declaration
 - security profile declaration
+
+v0.3 semantic memory expansion is specified as a draft and is not yet fully implemented across reference implementations.
 
 ## 2. Implemented route surface
 
@@ -68,7 +70,8 @@ Implemented:
 
 Working examples:
 
-- Nexus server
+- Engram runtime (first reference runtime target; v0.3 implementation pending)
+- Nexus / Agent Memory backend
 - `@nunchiai/amcp-sdk`
 - `@nunchiai/nexus-mcp`
 - `@nunchiai/reference-agent`
@@ -86,7 +89,19 @@ Canonical public protocol surface:
 
 - `/v1/amcp/*`
 
-## 7. What is not finalized yet
+## 7. v0.3 Draft Additions
+
+v0.3 adds the following draft semantics:
+
+- time and sequence fields
+- action-outcome experience structure
+- explainable recall item schema
+- immutability principle for original experience records
+- separation of memory from learning/world-model layers
+- optional `amcp.embodied.v0` extension profile
+- dotted extension types such as `agent.verification` and `embodied.observation`
+
+## 8. What is not finalized yet
 
 Not part of the v0.2 baseline:
 
@@ -95,9 +110,12 @@ Not part of the v0.2 baseline:
 - broader multi-language SDK support
 - final governance process
 - ecosystem badge / registry process
-- atom relations / graph model (deferred to v0.3)
+- atom relations / graph model (deferred beyond v0.3)
+- full v0.3 conformance test suite
+- independent embodied memory implementation
+- exact promotion path from `amcp.embodied.v0` to a future canonical profile
 
-## 8. Practical status
+## 9. Practical status
 
 AMCP should currently be read as:
 
@@ -108,10 +126,12 @@ AMCP should currently be read as:
 
 It is not yet a frozen long-term standard.
 
-## 9. Next steps
+## 10. Next steps
 
 Planned for future versions:
 
+- implement v0.3 in Engram as the first reference runtime
+- add v0.3 conformance fixtures for time/sequence, experience, recall explainability, and embodied extension records
 - finalize governance process
 - expand compliance test coverage
 - integrate community feedback

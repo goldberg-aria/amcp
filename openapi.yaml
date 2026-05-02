@@ -1,11 +1,12 @@
 openapi: 3.0.3
 info:
   title: AMCP
-  version: 0.2.0
+  version: 0.3.0
   description: |
     Agent Memory Continuity Protocol.
 
     AMCP is a protocol for portable, long-term agent memory.
+    v0.3 adds time/sequence, action-outcome, explainable recall, and optional embodied memory profile support.
     Current Axon Level 0 bootstrap transport is unauthenticated; auth is deferred to a later phase.
 servers:
   - url: https://your-server.example.com
@@ -639,9 +640,26 @@ components:
           type: array
           items:
             type: string
+        supports_explainable_recall:
+          type: boolean
+          description: Whether recall items include score, match_basis, confidence, and age.
+        supports_time_sequence:
+          type: boolean
+          description: Whether records preserve AMCP v0.3 time and sequence fields.
+        supports_experience:
+          type: boolean
+          description: Whether records preserve AMCP v0.3 action-outcome experience fields.
+        supports_embodied_profile:
+          type: boolean
+          description: Whether the implementation supports the optional amcp.embodied.v0 extension profile.
     EventType:
       type: string
-      enum: [decision, task, context, artifact, error, convention]
+      description: |
+        Core AMCP types are decision, task, context, artifact, error, and convention.
+        AMCP v0.3 also permits dotted extension types such as agent.verification
+        and embodied.observation. Clients that do not understand a dotted type
+        should preserve it and treat it as context for display/export purposes.
+      example: "agent.verification"
     ScopeKind:
       type: string
       description: Canonical scope kinds. Implementations may accept additional aliases and normalize them internally.
@@ -679,6 +697,49 @@ components:
         timestamp:
           type: string
           format: date-time
+    MemoryTime:
+      type: object
+      description: Optional AMCP v0.3 time and sequence information for the remembered experience.
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        sequence_id:
+          type: string
+        event_order:
+          type: integer
+        duration_ms:
+          type: integer
+    MemoryExperience:
+      type: object
+      description: Optional AMCP v0.3 action-outcome structure.
+      properties:
+        action:
+          type: string
+        context:
+          type: string
+        outcome:
+          type: string
+        reason:
+          type: string
+    EmbodiedMemory:
+      type: object
+      description: Optional amcp.embodied.v0 extension metadata. Large sensor payloads should be represented through source_refs.
+      properties:
+        location:
+          type: string
+        frame_id:
+          type: string
+        sensor_event:
+          type: string
+        routine:
+          type: string
+        constraint:
+          type: string
+        actor_state:
+          type: string
+        environment_state:
+          type: string
     MemoryRetention:
       type: object
       required: [mode]
@@ -822,6 +883,12 @@ components:
             $ref: '#/components/schemas/SourceRef'
         energy:
           type: number
+        time:
+          $ref: '#/components/schemas/MemoryTime'
+        experience:
+          $ref: '#/components/schemas/MemoryExperience'
+        embodied:
+          $ref: '#/components/schemas/EmbodiedMemory'
         session_id:
           description: Compatibility alias for `origin.session_id`. Servers may normalize this into `origin.session_id` before storage.
           type: string
@@ -877,6 +944,12 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SourceRef'
+        time:
+          $ref: '#/components/schemas/MemoryTime'
+        experience:
+          $ref: '#/components/schemas/MemoryExperience'
+        embodied:
+          $ref: '#/components/schemas/EmbodiedMemory'
         created_at:
           type: string
           format: date-time
@@ -912,7 +985,9 @@ components:
         items:
           type: array
           items:
-            $ref: '#/components/schemas/MemoryItem'
+            oneOf:
+              - $ref: '#/components/schemas/RecallItem'
+              - $ref: '#/components/schemas/MemoryItem'
         graph_context:
           type: string
           nullable: true
@@ -922,6 +997,26 @@ components:
           allOf:
             - $ref: '#/components/schemas/RecallOverflow'
           nullable: true
+    RecallItem:
+      type: object
+      required: [memory]
+      description: AMCP v0.3 explainable recall item. The MemoryItem form remains accepted during compatibility windows.
+      properties:
+        memory:
+          $ref: '#/components/schemas/MemoryItem'
+        score:
+          type: number
+        match_basis:
+          type: array
+          items:
+            type: string
+            enum: [semantic, keyword, temporal, source_ref, sequence, scope, tag, type, hybrid]
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        age_ms:
+          type: integer
     SessionSummary:
       type: object
       required: [id, status, last_activity, atom_count]

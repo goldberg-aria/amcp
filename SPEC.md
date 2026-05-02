@@ -1,7 +1,7 @@
 # AMCP Specification
 
 Status: Public Draft  
-Version: v0.2
+Version: v0.3
 
 ## 1. Overview
 
@@ -23,6 +23,8 @@ AMCP standardizes:
 - support for long-term memory
 - support for export/import portability
 - compatibility with existing systems through alias and mapping layers
+- support for future embodied systems through optional world-aware memory extensions
+- preserve reproducible experience records while keeping learning and world models outside the protocol
 
 ## 3. Canonical memory record
 
@@ -39,22 +41,26 @@ A canonical record includes:
 - `metadata`
 - `source_refs`
 - `energy`
+- `time`
+- `experience`
 - `created_at`
 - `updated_at`
 
 `energy` is an optional relevance or salience score supplied by an implementation.
 Clients must not depend on it always being present.
 
+`time` and `experience` are optional in v0.3. They are included so implementations can represent ordered experience without making AMCP a learning, reasoning, or world-model protocol.
+
 ### 3.1 Scope
 
-Supported `scope.kind` values in v0.1:
+Supported `scope.kind` values in v0.3:
 
 - `user`
 - `project`
 - `team`
 - `org`
 
-`session` is not a scope kind in v0.1. Session continuity is represented through `origin.session_id`.
+`session` is not a scope kind in v0.3. Session continuity is represented through `origin.session_id`.
 
 ### 3.2 Origin
 
@@ -107,14 +113,62 @@ Where policy allows, that can behave as effectively indefinite memory.
   "metadata": {},
   "source_refs": [],
   "energy": 0.95,
+  "time": {
+    "timestamp": "2026-03-20T10:00:00Z",
+    "sequence_id": "seq_001",
+    "event_order": 12
+  },
+  "experience": {
+    "action": "configured project defaults",
+    "context": "new TypeScript project",
+    "outcome": "future scaffolds should default to TypeScript",
+    "reason": "user preference was explicitly stated"
+  },
   "created_at": "2026-03-20T10:00:00Z",
   "updated_at": "2026-03-20T10:00:00Z"
 }
 ```
 
+### 3.6 Time and sequence
+
+AMCP records SHOULD preserve enough time and order information to reconstruct experience flow when that matters.
+
+The optional `time` object MAY include:
+
+- `timestamp` — when the remembered event occurred
+- `sequence_id` — stable identifier for an ordered event stream
+- `event_order` — monotonic order within the sequence
+- `duration_ms` — event duration when known
+
+`created_at` records when the memory was stored by the implementation.
+`time.timestamp` records when the experience happened.
+Those values may differ.
+
+### 3.7 Action-outcome structure
+
+AMCP is not limited to static facts.
+Implementations MAY use the optional `experience` object to preserve experience as an action-result unit:
+
+- `action` — what was done
+- `context` — relevant state before or during the action
+- `outcome` — what happened
+- `reason` — why the action or conclusion matters
+
+This structure is especially useful for coding agents, operational agents, and embodied systems, but it remains optional in the canonical record.
+
+### 3.8 Immutability and derived records
+
+Memory records are experience source records.
+Implementations SHOULD treat stored records as immutable after creation, except for lifecycle and policy fields such as `deleted_at`, `deletion_source`, retention state, or implementation-managed indexes.
+
+Summaries, consolidations, embeddings, rankings, and learned model state MUST be represented as derived layers or derived records.
+They MUST NOT overwrite the original experience record.
+
+When a derived record is exported, it SHOULD preserve provenance through `source_refs` or metadata such as `derived_from`.
+
 ## 4. Standard record types
 
-AMCP v0.1 standardizes:
+AMCP v0.3 standardizes the following core record types:
 
 - `task`
 - `decision`
@@ -122,6 +176,18 @@ AMCP v0.1 standardizes:
 - `artifact`
 - `convention`
 - `error`
+
+Implementations MAY use dotted extension types for domain-specific memories, such as:
+
+- `agent.analysis`
+- `agent.verification`
+- `embodied.observation`
+- `embodied.action`
+- `embodied.routine`
+- `embodied.constraint`
+
+Unknown dotted types MUST NOT change the semantics of the core types.
+Conforming clients that do not understand a dotted type SHOULD treat it as `context` for display and export purposes while preserving the original `type` value.
 
 ## 5. HTTP surface
 
@@ -163,6 +229,17 @@ Returns relevant memory records for a query, optionally constrained by:
 - types
 - token budget
 - session context
+
+In v0.3, recall results SHOULD explain why each memory was returned.
+Each recall item SHOULD include:
+
+- `memory` — the canonical memory record
+- `score` — implementation-provided ranking score
+- `match_basis` — why the record matched, such as `semantic`, `keyword`, `temporal`, `source_ref`, `sequence`, `scope`, or `hybrid`
+- `confidence` — implementation-estimated confidence in the match
+- `age_ms` — age of the remembered event when it can be derived
+
+Servers MAY continue returning legacy flat memory arrays during a compatibility window, but v0.3 conformance tests SHOULD prefer the explainable recall item shape.
 
 ### 6.3 Sessions
 
@@ -300,7 +377,8 @@ Claims like "AMCP-compatible" without a declared level and profile set are disco
 
 Current reference position:
 
-- Nexus = reference server implementation
+- Engram = first reference runtime implementation
+- Nexus / Agent Memory = reference memory backend implementation
 - `@nunchiai/reference-agent` = reference client implementation
 
 The protocol is meant to be proven by running systems, not by prose alone.
@@ -312,12 +390,17 @@ Implementations are expected to extend it for product-specific behavior without 
 
 ### 11.1 Vendor extension namespace
 
-Extensions to records, requests, responses, route names, profile names, or capability flags MUST use a vendor-prefixed key.
+Vendor-specific extensions to records, requests, responses, route names, profile names, or capability flags MUST use a vendor-prefixed key.
+
+AMCP-defined extension profiles MAY use reserved `amcp.*`, `agent.*`, or `embodied.*` namespaces documented by the specification.
 
 Reserved prefixes:
 
 - `x-` for general vendor extensions
 - `x-<vendor>-` for vendor-scoped extensions, e.g. `x-norfolk-provenance-tier`
+- `amcp.*` for specification-defined extension profiles
+- `agent.*` for specification-defined agent memory extension types
+- `embodied.*` for specification-defined embodied memory extension types
 - `lifecycle.x-<vendor>-<name>` for vendor-defined lifecycle profiles
 - `security.x-<vendor>-<name>` for vendor-defined security profiles
 
@@ -362,7 +445,29 @@ Clients MAY use this to adapt behavior, but MUST NOT require any specific extens
 It accepts a `source` reference and optional `hints`, and produces canonical memory items.
 Implementations may declare it via capabilities, but it is not required for any conformance level.
 
-### 11.5 Forward compatibility
+### 11.5 Standard extension profile: `amcp.embodied.v0`
+
+AMCP v0.3 defines `amcp.embodied.v0` as an optional extension profile for world-aware memory.
+
+This profile exists because physical systems, robots, automation cells, and edge devices increasingly need memory records that preserve observations, constraints, routines, and action outcomes in a world context.
+
+The profile is intentionally optional.
+An implementation can be AMCP-conforming without supporting embodied memory.
+
+When declared, `amcp.embodied.v0` SHOULD support embodied metadata such as:
+
+- `location` — physical or logical place
+- `frame_id` — coordinate frame, map frame, or workspace frame
+- `sensor_event` — sensor observation summary or reference
+- `routine` — repeated behavior or procedure
+- `constraint` — safety, physical, operational, or policy constraint
+- `actor_state` — relevant state of the robot, device, or operator
+- `environment_state` — relevant state of the physical environment
+
+Large sensor payloads SHOULD NOT be embedded directly in memory records.
+They SHOULD be represented through `source_refs` and content hashes.
+
+### 11.6 Forward compatibility
 
 Future versions of AMCP MAY promote a stable, widely adopted extension to canonical status.
 When this happens:
