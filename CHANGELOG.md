@@ -1,5 +1,32 @@
 # Changelog
 
+## v0.4.0 — 2026-05-14
+
+Status: Public Draft
+
+AMCP v0.4 makes Human Memory Governance a foundational protocol principle and adds the minimum canonical fields needed for pinning and version relationships.
+
+### Added
+
+- Foundational Principle: Human Memory Governance.
+- Optional `pinned` field with `user_pinned`, `system_pinned`, or absent/null state.
+- Optional `supersedes` and `superseded_by` fields for memory version relationships.
+- Computed governance state guidance for active, pinned, superseded, expired, deleted, and derived records.
+- Governance role mapping for canonical memory fields and recall evidence fields.
+
+### Clarified
+
+- `ttl` and `persistent` retention do not imply pinning.
+- `system_pinned` must remain visible to authorized users or operators and should carry policy or audit context.
+- `superseded_by` may be stored, computed, or represented as a derived reverse index without rewriting original record content.
+- `reviewed_at` and `governance_action` are intentionally deferred to a future governance event model.
+
+### Compatibility
+
+- v0.4 fields are optional and additive.
+- v0.3 clients can ignore `pinned`, `supersedes`, and `superseded_by` without breaking baseline AMCP behavior.
+- The canonical `/v1/amcp/*` HTTP route surface remains unchanged.
+
 ## v0.3.0 — 2026-05-03
 
 Status: Public Draft

@@ -1,6 +1,6 @@
 # AMCP Status
 
-Status: Public Draft v0.3 with v0.2 working reference baseline
+Status: Public Draft v0.4 with v0.2 working reference baseline
 
 ## 1. What is implemented today
 
@@ -21,7 +21,7 @@ Current working baseline remains the v0.2 protocol/profile surface:
 - lifecycle profile declaration
 - security profile declaration
 
-v0.3 semantic memory expansion is specified as a draft and is not yet fully implemented across reference implementations.
+v0.3 semantic memory expansion and v0.4 Memory Governance fields are specified as drafts and are not yet fully implemented across reference implementations.
 
 ## 2. Implemented route surface
 
@@ -89,7 +89,20 @@ Canonical public protocol surface:
 
 - `/v1/amcp/*`
 
-## 7. v0.3 Draft Additions
+## 7. v0.4 Draft Additions
+
+v0.4 adds the following draft semantics:
+
+- Human Memory Governance as a foundational AMCP principle
+- optional `pinned` field with `user_pinned`, `system_pinned`, or absent/null state
+- optional `supersedes` and `superseded_by` fields for version relationships
+- computed governance state guidance for active, pinned, superseded, expired, soft-deleted, hard-deleted, and derived records
+- explicit deferral of `reviewed_at` and `governance_action` to a future governance event model
+
+All v0.4 fields are optional and additive.
+v0.3 clients can ignore them while preserving baseline AMCP behavior.
+
+## 8. v0.3 Draft Additions
 
 v0.3 adds the following draft semantics:
 
@@ -101,11 +114,13 @@ v0.3 adds the following draft semantics:
 - optional `amcp.embodied.v0` extension profile
 - dotted extension types such as `agent.verification` and `embodied.observation`
 
-## 8. What is not finalized yet
+## 9. What is not finalized yet
 
 Not part of the v0.2 baseline:
 
 - canonical erase route (currently profile-dependent at /v1/amcp/erase, not yet mandated by SPEC)
+- v0.4 Memory Governance field implementation across reference implementations
+- governance event model for review, pin, unpin, restore, supersede, forget, and erase actions
 - expanded privacy model
 - broader multi-language SDK support
 - final governance process
@@ -115,7 +130,7 @@ Not part of the v0.2 baseline:
 - independent embodied memory implementation
 - exact promotion path from `amcp.embodied.v0` to a future canonical profile
 
-## 9. Practical status
+## 10. Practical status
 
 AMCP should currently be read as:
 
@@ -126,12 +141,15 @@ AMCP should currently be read as:
 
 It is not yet a frozen long-term standard.
 
-## 10. Next steps
+## 11. Next steps
 
 Planned for future versions:
 
+- implement v0.4 governance fields in reference clients and backends
 - implement v0.3 in Engram as the first reference runtime
 - add v0.3 conformance fixtures for time/sequence, experience, recall explainability, and embodied extension records
+- add v0.4 conformance fixtures for pinning and supersession relationships
+- design the future governance event model after operational data is available
 - finalize governance process
 - expand compliance test coverage
 - integrate community feedback

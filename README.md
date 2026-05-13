@@ -1,12 +1,12 @@
 # AMCP: Agent Memory Continuity Protocol
 
-Status: Public Draft v0.3
+Status: Public Draft v0.4
 
-AMCP is a protocol for portable, long-term agent memory.
+AMCP is a protocol for portable, governed, long-term agent memory.
 
 It defines the small shared contract an agent runtime needs to save, recall, move, and govern memory across sessions, clients, tools, and implementations.
 
-AMCP does not define a model protocol, prompt format, tool protocol, or reasoning standard. It focuses only on memory continuity.
+AMCP does not define a model protocol, prompt format, tool protocol, or reasoning standard. It focuses only on memory continuity and memory governance.
 
 ## Why AMCP Exists
 
@@ -20,6 +20,19 @@ Most agents still lose useful memory when:
 
 AMCP solves the interoperability layer: the canonical record shape, the HTTP operations, the export/import behavior, and the rules for extending the protocol without forking it.
 
+## Memory Governance
+
+As agents take on more work, users can lose a basic ability: knowing the state of their own information.
+They need to know what was stored, what is being forgotten, which information is old, which record is current, which facts should be pinned, and which memories can safely flow away.
+
+AMCP calls this memory governance.
+Memory is different from a stateless tool call because it accumulates, influences future action, and can become part of a person's working identity across agents, teams, devices, and embodied systems.
+The protocol therefore cannot be only a wire format.
+It must also answer who governs memory state.
+
+AMCP's answer is simple: the final authority over memory governance belongs to the human user or the organization acting under that user's explicit policy.
+Canonical fields such as `scope`, `origin`, `visibility`, `retention`, `source_refs`, `pinned`, `supersedes`, and `superseded_by` exist to make that governance visible, portable, and auditable.
+
 ## Core Idea
 
 AMCP keeps the core small and makes everything else explicit.
@@ -31,6 +44,7 @@ The core standardizes:
 - sessions
 - export/import portability
 - soft deletion
+- pinning and version relationships
 - capability discovery
 
 Implementations can then declare additional behavior through:
@@ -42,6 +56,19 @@ Implementations can then declare additional behavior through:
 - vendor extensions using `x-*` names
 
 This lets AMCP support both minimal local runtimes and managed production services without bloating the canonical record.
+
+## v0.4 Direction
+
+AMCP v0.4 makes Human Memory Governance a foundational principle and adds the minimum canonical fields needed to express two governance actions:
+
+- `pinned` — whether a memory is explicitly protected from automatic forgetting, decay, or eviction.
+- `supersedes` / `superseded_by` — how newer memories update or replace older memories without silently overwriting them.
+
+These fields are optional and additive.
+v0.3 clients can ignore them, while v0.4 implementations can expose clearer memory state to users and operators.
+
+AMCP v0.4 intentionally does not add `reviewed_at` or `governance_action` as canonical fields.
+Those belong to a future governance event model after real operational data shows the right shape.
 
 ## v0.3 Direction
 
@@ -75,6 +102,9 @@ A memory record contains:
 - `tags`
 - `metadata`
 - `source_refs`
+- `pinned`
+- `supersedes`
+- `superseded_by`
 - `energy`
 - `time`
 - `experience`
@@ -108,6 +138,9 @@ Example:
   "tags": ["preference", "language"],
   "metadata": {},
   "source_refs": [],
+  "pinned": "user_pinned",
+  "supersedes": [],
+  "superseded_by": [],
   "energy": 0.95,
   "time": {
     "timestamp": "2026-03-20T10:00:00Z",
@@ -182,6 +215,7 @@ The descriptor declares:
 - supported operations
 - extensions
 - backend modes and feature flags
+- memory governance support such as pinning and supersession
 
 Clients can use this endpoint to adapt behavior while still operating against the canonical AMCP surface.
 

@@ -43,6 +43,7 @@ Typical path:
 - call `recall`
 - use export/import and delete directly
 - add policy helpers around the runtime loop
+- expose pinned and superseded records in the product surface when Memory Governance matters
 
 Example:
 
@@ -75,6 +76,7 @@ What this gives you:
 - direct protocol integration
 - cleaner control over memory timing
 - easier testing than prompt-only approaches
+- a clear path to user-visible memory governance without replacing the backend
 
 Tradeoff:
 
@@ -96,12 +98,15 @@ Typical path:
 - add structured remember triggers
 - connect session start and session close behavior
 - enforce retention and deletion rules inside the runtime
+- enforce `pinned` behavior so user-pinned records are not automatically forgotten, decayed, or evicted
+- preserve `supersedes` and `superseded_by` relationships when memories are updated
 
 What this gives you:
 
 - strongest continuity behavior
 - deterministic memory lifecycle
 - best path for production-grade adoption
+- strongest foundation for user-facing memory governance screens
 
 Tradeoff:
 
@@ -132,6 +137,8 @@ Recommended order for most teams:
 - do not block adoption on a full rewrite
 - do not make memory depend only on prompting if deterministic behavior matters
 - do not replace an existing system before validating the continuity value first
+- do not treat TTL or persistent retention as a substitute for explicit pinning
+- do not overwrite old memory records silently when a supersession relationship would preserve user understanding
 
 ## 7. Practical summary
 
@@ -140,3 +147,9 @@ AMCP adoption should feel incremental:
 - low-friction first
 - deterministic later
 - native only when justified
+
+Memory Governance should also be incremental:
+
+- first expose what is stored and recallable
+- then expose pinned and superseded state
+- finally add review and governance event history when the product has enough operational data to justify that model

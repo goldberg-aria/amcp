@@ -16,6 +16,21 @@ await client.remember(
     scope: { kind: 'project', id: 'example-project' },
     visibility: 'project',
     retention: { mode: 'persistent' },
+    pinned: 'user_pinned',
+    supersedes: [],
+    superseded_by: [],
+  },
+);
+
+await client.remember(
+  'Use pnpm for the current web workspace',
+  'convention',
+  {
+    scope: { kind: 'project', id: 'example-project' },
+    visibility: 'project',
+    retention: { mode: 'persistent' },
+    supersedes: ['mem_old_package_manager'],
+    superseded_by: [],
   },
 );
 

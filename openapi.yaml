@@ -1,12 +1,13 @@
 openapi: 3.0.3
 info:
   title: AMCP
-  version: 0.3.0
+  version: 0.4.0
   description: |
     Agent Memory Continuity Protocol.
 
-    AMCP is a protocol for portable, long-term agent memory.
-    v0.3 adds time/sequence, action-outcome, explainable recall, and optional embodied memory profile support.
+    AMCP is a protocol for portable, governed, long-term agent memory.
+    v0.4 adds Human Memory Governance, including optional pinning and supersession fields.
+    v0.3 added time/sequence, action-outcome, explainable recall, and optional embodied memory profile support.
     Current Axon Level 0 bootstrap transport is unauthenticated; auth is deferred to a later phase.
 servers:
   - url: https://your-server.example.com
@@ -598,20 +599,20 @@ components:
           type: string
           enum: [L0, L1, L2]
           description: |
-            Declared protocol conformance level per SPEC §9.1.
+            Declared protocol conformance level per SPEC §10.1.
         lifecycle_profiles:
           type: array
           items:
             type: string
           description: |
-            Declared lifecycle profiles per SPEC §6.6.
+            Declared lifecycle profiles per SPEC §7.6.
             Standard values: lifecycle.soft, lifecycle.batch, lifecycle.hard, lifecycle.cryptographic.
             Vendor profiles use lifecycle.x-<vendor>-<name>.
           example: ["lifecycle.soft", "lifecycle.batch"]
         security_profile:
           type: string
           description: |
-            Declared security profile per SPEC §13.
+            Declared security profile per SPEC §14.
             Standard values: security.bearer, security.oauth2, security.mtls,
             security.none-loopback, security.axon-bootstrap.
             Vendor profiles use security.x-<vendor>-<name>.
@@ -652,6 +653,15 @@ components:
         supports_embodied_profile:
           type: boolean
           description: Whether the implementation supports the optional amcp.embodied.v0 extension profile.
+        supports_memory_governance:
+          type: boolean
+          description: Whether the implementation preserves and exposes AMCP v0.4 Memory Governance fields.
+        supports_pinning:
+          type: boolean
+          description: Whether the implementation preserves AMCP v0.4 pinned state.
+        supports_supersession:
+          type: boolean
+          description: Whether the implementation preserves AMCP v0.4 supersedes/superseded_by relationships.
     EventType:
       type: string
       description: |
@@ -672,6 +682,15 @@ components:
       type: string
       description: Canonical retention modes. Implementations may accept additional aliases and normalize them internally.
       enum: [ephemeral, persistent, ttl]
+    PinState:
+      type: string
+      nullable: true
+      description: |
+        Optional AMCP v0.4 pin state. `user_pinned` is an explicit user pin
+        and must protect the record from automatic forgetting, decay, or
+        eviction while active. `system_pinned` is policy-driven and should be
+        visible to authorized users or operators.
+      enum: [user_pinned, system_pinned]
     DeletionSource:
       type: string
       enum: [user, agent, policy, import]
@@ -832,6 +851,18 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SourceRef'
+        pinned:
+          $ref: '#/components/schemas/PinState'
+        supersedes:
+          type: array
+          description: Optional AMCP v0.4 memory ids this record updates or replaces.
+          items:
+            type: string
+        superseded_by:
+          type: array
+          description: Optional AMCP v0.4 memory ids that update or replace this record.
+          items:
+            type: string
         energy:
           type: number
         created_at:
@@ -875,12 +906,24 @@ components:
           additionalProperties: true
           description: |
             Free-form metadata. Vendor-specific extensions MUST use the
-            `x-` or `x-<vendor>-` key prefix as defined in SPEC §11.1.
+            `x-` or `x-<vendor>-` key prefix as defined in SPEC §12.1.
             Conforming clients MUST ignore unknown `x-*` keys without error.
         source_refs:
           type: array
           items:
             $ref: '#/components/schemas/SourceRef'
+        pinned:
+          $ref: '#/components/schemas/PinState'
+        supersedes:
+          type: array
+          description: Optional AMCP v0.4 memory ids this record updates or replaces.
+          items:
+            type: string
+        superseded_by:
+          type: array
+          description: Optional AMCP v0.4 memory ids that update or replace this record.
+          items:
+            type: string
         energy:
           type: number
         time:
@@ -938,12 +981,24 @@ components:
           additionalProperties: true
           description: |
             Free-form metadata. Vendor-specific extensions MUST use the
-            `x-` or `x-<vendor>-` key prefix as defined in SPEC §11.1.
+            `x-` or `x-<vendor>-` key prefix as defined in SPEC §12.1.
             Conforming clients MUST ignore unknown `x-*` keys without error.
         source_refs:
           type: array
           items:
             $ref: '#/components/schemas/SourceRef'
+        pinned:
+          $ref: '#/components/schemas/PinState'
+        supersedes:
+          type: array
+          description: Optional AMCP v0.4 memory ids this record updates or replaces.
+          items:
+            type: string
+        superseded_by:
+          type: array
+          description: Optional AMCP v0.4 memory ids that update or replace this record.
+          items:
+            type: string
         time:
           $ref: '#/components/schemas/MemoryTime'
         experience:
